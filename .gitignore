@@ -1,0 +1,4 @@
+__pycache__/
+ai/__pycache__/
+ai/tasks/__pycache__/
+*.pyc

@@ -1,0 +1,7 @@
+services:
+  sub_test:
+    build: .
+    network_mode: host
+    volumes:
+      - .:/ros2_ws/src/sub_ai_sim
+    command: python3 /ros2_ws/src/sub_ai_sim/unified_test.py
