@@ -6,75 +6,79 @@ class DiveToDepth:
         self.target_depth = target_depth
 
     def execute(self, sub, dt, sensors, vision_data, config, context):
-        error = self.target_depth - sensors.depth
-        if abs(error) < 0.05:
+        err = self.target_depth - sensors.depth
+        if abs(err) < 0.05:
             return "finished", ThrusterCommands()
-        
-        cmds = ThrusterCommands()
-        cmds.vertical = np.clip(error * 0.8, -1.0, 1.0)
-        return "running", cmds
-
-class WaitForTargetVisible:
-    def __init__(self, target_type='gate', timeout=10.0):
-        self.target_type = target_type
-        self.elapsed = 0.0
-        self.timeout = timeout
-
-    def execute(self, sub, dt, sensors, vision_data, config, context):
-        self.elapsed += dt
-        visible = False
-        if self.target_type == 'gate':
-            visible = vision_data.is_gate_visible()
-            
-        if visible: return "finished", ThrusterCommands()
-        if self.elapsed > self.timeout: return "failed", ThrusterCommands()
-        return "running", ThrusterCommands()
+        return "running", ThrusterCommands(vertical=np.clip(err * 0.8, -1.0, 1.0))
 
 class AlignToObjectX:
-    def __init__(self, target_type='gate', target_x_fraction=0.5):
+    def __init__(self, target_type='gate', target_x=0.5, threshold=0.05):
         self.target_type = target_type
-        self.target_x_fraction = target_x_fraction
+        self.target_x = target_x     # Now matches the GateTask call
+        self.threshold = threshold
 
     def execute(self, sub, dt, sensors, vision_data, config, context):
-        cam_w = sensors.camera_width
-        if cam_w == 0: return "running", ThrusterCommands()
-
-        target_x = cam_w * self.target_x_fraction
-        current_x = 0
+        w = sensors.camera_width
+        if w == 0: return "running", ThrusterCommands()
         
+        curr_x_norm = 0
         if self.target_type == 'gate':
             pair = vision_data.get_gate_pair()
             if not pair: return "failed", ThrusterCommands()
-            current_x = (pair[0]['center_x'] + pair[1]['center_x']) / 2
+            curr_x_norm = ((pair[0]['center_x'] + pair[1]['center_x']) / 2) / w
         
-        error = (target_x - current_x) / cam_w
-        cmds = ThrusterCommands()
-        cmds.yaw = np.clip(error * 1.5, -1.0, 1.0)
+        err = self.target_x - curr_x_norm
         
-        if abs(error) < 0.05: return "finished", cmds
-        return "running", cmds
+        if abs(err) < self.threshold:
+            return "finished", ThrusterCommands()
+            
+        return "running", ThrusterCommands(yaw=np.clip(err * 1.5, -0.6, 0.6))
 
-class DriveForward:
-    def __init__(self, duration=3.0, speed=0.4):
-        self.duration = duration
+class DriveUntilTargetLostForward:
+    def __init__(self, target_type='gate', speed=0.4, timeout=8.0):
+        self.target_type = target_type
         self.speed = speed
+        self.timeout = timeout
         self.elapsed = 0.0
 
     def execute(self, sub, dt, sensors, vision_data, config, context):
         self.elapsed += dt
-        if self.elapsed >= self.duration:
+        visible = vision_data.is_gate_visible() if self.target_type == 'gate' else False
+        if not visible or self.elapsed > self.timeout:
             return "finished", ThrusterCommands()
         return "running", ThrusterCommands(forward=self.speed)
 
-class SwayStraight:
-    def __init__(self, duration=2.0, speed=0.3):
-        self.duration = duration
-        self.speed = speed
-        self.elapsed = 0.0
+# --- Stubs for the remaining imports in __init__.py ---
+class TurnToHeading:
+    def __init__(self, target_heading): self.target_heading = target_heading
+    def execute(self, *args): return "finished", ThrusterCommands()
 
-    def execute(self, sub, dt, sensors, vision_data, config, context):
-        self.elapsed += dt
-        if self.elapsed >= self.duration:
-            return "finished", ThrusterCommands()
-        # Maintains heading while moving laterally
-        return "running", ThrusterCommands(lateral=self.speed)
+class DriveStraight:
+    def __init__(self, duration, speed): self.d, self.s, self.e = duration, speed, 0.0
+    def execute(self, sub, dt, *args):
+        self.e += dt
+        return ("finished", ThrusterCommands()) if self.e >= self.d else ("running", ThrusterCommands(forward=self.s))
+
+class SwayStraight:
+    def __init__(self, duration, speed): self.d, self.s, self.e = duration, speed, 0.0
+    def execute(self, sub, dt, *args):
+        self.e += dt
+        return ("finished", ThrusterCommands()) if self.e >= self.d else ("running", ThrusterCommands(lateral=self.s))
+
+class Stabilize:
+    def __init__(self, duration=2.0): self.d, self.e = duration, 0.0
+    def execute(self, sub, dt, *args):
+        self.e += dt
+        return ("finished", ThrusterCommands()) if self.e >= self.d else ("running", ThrusterCommands())
+
+class WaitForTargetVisible:
+    def __init__(self, target_type='gate', timeout=10.0): self.t, self.to, self.e = target_type, timeout, 0.0
+    def execute(self, sub, dt, sensors, vision, *args):
+        self.e += dt
+        if vision.is_gate_visible(): return "finished", ThrusterCommands()
+        return ("failed", ThrusterCommands()) if self.e > self.to else ("running", ThrusterCommands())
+
+class DriveUntilTargetLost: pass
+class SwayUntilTargetLost: pass
+class ApproachAndCenterObject: pass
+class DynamicOrbitPole: pass

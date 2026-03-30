@@ -7,8 +7,6 @@ import math
 import random
 import time
 from typing import Tuple, Optional
-
-import pygame
 import numpy as np
 
 from config import *
@@ -27,7 +25,7 @@ class SubmarineSimulator:
         self.screen = pygame.display.set_mode((width, height))
         pygame.display.set_caption("Autonomous Submarine (AUV) Simulator")
         self.clock = pygame.time.Clock()
-        self.config = SimulationConfig()
+        self.config = MissionConfig()
         self.prequal_config = PrequalConfig()
         self.scaleX = width * 0.7 / self.config.worldWidth
         self.scaleY = height * 0.8 / self.config.worldHeight

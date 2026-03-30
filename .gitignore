@@ -1,4 +1,6 @@
 __pycache__/
-ai/__pycache__/
-ai/tasks/__pycache__/
 *.pyc
+*.log
+.DS_Store
+node_modules/
+.vscode/

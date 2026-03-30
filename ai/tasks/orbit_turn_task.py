@@ -5,7 +5,6 @@ Orbit Turn Task: Navigates around the marker using a dynamic orbit
 """
 import math
 from typing import Tuple, List, Dict, Any
-import pygame
 import numpy as np
 
 # Absolute imports
@@ -17,7 +16,7 @@ from ai.tasks.common_subtasks import (WaitForTargetVisible, AlignToObjectX,
                                       DynamicOrbitPole, SwayUntilTargetLost)
 
 from data_structures import SensorSuite, Vision, ThrusterCommands
-from config import SimulationConfig
+from config import MissionConfig
 from utils import angle_diff
 
 class OrbitTurnTask(Task):

@@ -5,7 +5,6 @@ strafing left, and then turning 180 degrees.
 """
 import math
 from typing import Tuple, List, Dict, Any
-import pygame
 import numpy as np
 
 # Absolute imports
@@ -17,7 +16,7 @@ from ai.tasks.common_subtasks import (WaitForTargetVisible, AlignToObjectX,
                                       SwayStraight, Stabilize) 
 
 from data_structures import SensorSuite, Vision, ThrusterCommands 
-from config import SimulationConfig 
+from config import MissionConfig 
 from utils import angle_diff
 
 class SwayTurnTask(Task):
@@ -28,7 +27,7 @@ class SwayTurnTask(Task):
 
     # --- Simple subtask to store heading in context ---
     class _StoreHeadingSubtask(Subtask):
-        def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision: Vision, config: SimulationConfig, context: dict) -> Tuple[SubtaskStatus, ThrusterCommands]:
+        def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision: Vision, config: MissionConfig, context: dict) -> Tuple[SubtaskStatus, ThrusterCommands]:
             context['initial_heading'] = sensors.heading
             print(f"INFO: Stored initial heading: {sensors.heading:.1f}")
             return SubtaskStatus.COMPLETED, ThrusterCommands()

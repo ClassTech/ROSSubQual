@@ -1,94 +1,112 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image, Imu, FluidPressure
+from sensor_msgs.msg import Image, FluidPressure, Imu
+from geometry_msgs.msg import PoseStamped, Twist
 from cv_bridge import CvBridge
 import numpy as np
-import cv2
+from rclpy.qos import qos_profile_sensor_data
 
-# Import your existing AI
 from ai.submarine import Submarine
-from ai.tasks import GateTask, StabilizeTask, ShutdownTask
+from ai.tasks import GateTask, ShutdownTask
+from data_structures import SensorSuite, ThrusterCommands
 
 class UnifiedSubNode(Node):
     def __init__(self):
-        super().__init__('unified_sub_node')
+        super().__init__('sub_ai_node')
         self.bridge = CvBridge()
+        self.submarine = Submarine()
         
-        # 1. Setup AI
-        mission = [GateTask(target_depth=1.5), ShutdownTask()]
-        self.sub_ai = Submarine(mission_plan=mission)
-        self.latest_sensors = None # Start as None to prove we receive data
+        self.submarine.mission_control.tasks = [
+            GateTask(target_depth=1.5),
+            ShutdownTask()
+        ]
 
-        # 2. Setup Internal "Mock" Publisher
-        self.pub_timer = self.create_timer(0.1, self.publish_mock_internally)
-        self.depth_pub = self.create_publisher(FluidPressure, '/sensors/depth', 10)
-        self.image_pub = self.create_publisher(Image, '/sensors/camera', 10)
+        # Subscribers
+        self.create_subscription(
+            Image, 
+            '/thwaites/camera/image_raw', 
+            self.image_callback, 
+            qos_profile_sensor_data  # Use the sensor-specific profile
+            )
+        self.create_subscription(FluidPressure, '/thwaites/pressure', self.pressure_callback, 10)
+        self.create_subscription(PoseStamped, '/thwaites/ground_truth', self.pose_callback, 10)
 
-        # 3. Setup Internal "Brain" Subscriber
-        self.create_subscription(FluidPressure, '/sensors/depth', self.depth_cb, 10)
-        self.create_subscription(Image, '/sensors/camera', self.image_cb, 10)
+        # Publisher
+        self.cmd_pub = self.create_publisher(Twist, '/thwaites/cmd_vel', 10)
 
-        # 4. Control Loop (60Hz)
-        self.create_timer(1.0/60.0, self.control_loop)
+        # State
+        self.current_image = None
         self.current_depth = 0.0
-        self.get_logger().info("Unified Test Node Started")
+        self.current_heading = 0.0
+        self.last_time = self.get_clock().now()
 
-    def publish_mock_internally(self):
-        self.current_depth = min(1.5, self.current_depth + 0.05)
-        dp = FluidPressure()
-        dp.fluid_pressure = self.current_depth * 1025 * 9.81
-        self.depth_pub.publish(dp)
+        # Timer
+        self.timer = self.create_timer(0.05, self.control_loop)
+        self.get_logger().info("--- Node Initialized: Awaiting Data Streams ---")
 
-        # Create the "Gate" with two red poles
-        img = np.zeros((240, 320, 3), dtype=np.uint8)
-        img[:] = (120, 50, 20) # Blue water
-        
-        # Pole 1 (Left)
-        cv2.rectangle(img, (100, 50), (110, 200), (0, 0, 255), -1) 
-        # Pole 2 (Right) - ADD THIS LINE
-        cv2.rectangle(img, (210, 50), (220, 200), (0, 0, 255), -1) 
-        
-        self.image_pub.publish(self.bridge.cv2_to_imgmsg(img, "bgr8"))
+    def image_callback(self, msg):
+        try:
+            self.current_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+            # Log only the first time we get an image
+            if not hasattr(self, '_first_img'):
+                self.get_logger().info("SUCCESS: Camera data stream active.")
+                self._first_img = True
+        except Exception as e:
+            self.get_logger().error(f"Image Conversion Error: {e}")
 
-    def depth_cb(self, msg):
-        if self.latest_sensors is None: 
-                from data_structures import SensorSuite, MPU6050Readings
-                # Using named arguments ensures Python puts the data in the right slots
-                self.latest_sensors = SensorSuite(
-                camera_image=None, 
-                x=0.0, 
-                y=0.0, 
-                depth=0.0, 
-                heading=0.0, 
-                pitch=0.0, 
-                imu=MPU6050Readings()
-                )
-    
-        # Calculate depth from pressure
-        self.latest_sensors.depth = msg.fluid_pressure / (1025 * 9.81)
+    def pressure_callback(self, msg):
+        # Convert Pascal to Meters
+        self.current_depth = (msg.fluid_pressure - 101325.0) / 9806.65
+        if not hasattr(self, '_first_depth'):
+            self.get_logger().info("SUCCESS: Pressure data stream active.")
+            self._first_depth = True
 
-    def image_cb(self, msg):
-        if self.latest_sensors:
-            self.latest_sensors.camera_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+    def pose_callback(self, msg):
+        q = msg.pose.orientation
+        siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+        self.current_heading = np.degrees(np.arctan2(siny_cosp, cosy_cosp))
 
     def control_loop(self):
-        if self.latest_sensors and self.latest_sensors.camera_image is not None:
-            cmd, vision = self.sub_ai.update(1.0/60.0, self.latest_sensors)
-            
-            # --- ADD THESE DEBUG LOGS ---
-            red_count = len(vision.red_blobs)
-            current_subtask = self.sub_ai.get_current_state_name()
-            
-            self.get_logger().info(
-                f"Depth: {self.latest_sensors.depth:.2f} | "
-                f"Task: {current_subtask} | "
-                f"Red Blobs: {red_count}"
-            )
-def main():
-    rclpy.init()
-    rclpy.spin(UnifiedSubNode())
-    rclpy.shutdown()
+        # Diagnostic Heartbeat
+        if self.current_image is None:
+            self.get_logger().warn("WAITING: No camera image yet...", throttle_duration_sec=2.0)
+            return
+
+        now = self.get_clock().now()
+        dt = (now - self.last_time).nanoseconds / 1e9
+        self.last_time = now
+
+        sensors = SensorSuite(
+            camera_image=self.current_image,
+            depth=self.current_depth,
+            heading=self.current_heading
+        )
+
+        commands, vision = self.submarine.update(dt, sensors)
+
+        twist = Twist()
+        twist.linear.x = float(commands.forward)
+        twist.linear.y = float(commands.lateral)
+        twist.linear.z = float(commands.vertical)
+        twist.angular.z = float(commands.yaw)
+        self.cmd_pub.publish(twist)
+
+        # Force status output to the logs
+        task_name = self.submarine.get_current_state_name()
+        self.get_logger().info(f"STATUS: {task_name} | Depth: {self.current_depth:.2f}m", throttle_duration_sec=1.0)
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = UnifiedSubNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

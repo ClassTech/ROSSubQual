@@ -8,14 +8,22 @@ from typing import Tuple, Dict, Any
 # --- Ensure this line correctly imports Vision ---
 from data_structures import SensorSuite, Vision, ThrusterCommands
 # ---
-from config import SimulationConfig
+from config import MissionConfig
 # Forward declaration no longer needed
 # class Submarine: pass
 
 class SubtaskStatus(Enum):
-    RUNNING = auto()
-    COMPLETED = auto()
-    FAILED = auto()
+    IDLE = 0
+    RUNNING = 1
+    FINISHED = 2
+    FAILED = 3
+
+class Subtask:
+    def __init__(self):
+        self.status = SubtaskStatus.IDLE
+
+    def execute(self, sub, dt, sensors, vision_data, config, context):
+        raise NotImplementedError("Subtasks must implement execute()")
 
 class Subtask:
     """Base class for a reusable action within a larger Task."""
@@ -23,7 +31,7 @@ class Subtask:
     def on_enter(self, sub: 'Submarine', sensors: SensorSuite, vision_data: Vision, context: Dict[str, Any]):
         pass
 
-    def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision_data: Vision, config: SimulationConfig, context: Dict[str, Any]) -> Tuple[SubtaskStatus, ThrusterCommands]:
+    def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision_data: Vision, config: MissionConfig, context: Dict[str, Any]) -> Tuple[SubtaskStatus, ThrusterCommands]:
         raise NotImplementedError
 
     def on_exit(self, sub: 'Submarine', sensors: SensorSuite, vision_data: Vision, context: Dict[str, Any]):

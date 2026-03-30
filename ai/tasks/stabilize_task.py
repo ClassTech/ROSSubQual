@@ -10,7 +10,7 @@ from .task_base import Task, TaskStatus
 # --- CORRECT IMPORT ---
 from data_structures import SensorSuite, Vision, ThrusterCommands
 # ---
-from config import SimulationConfig
+from config import MissionConfig
 
 class StabilizeTask(Task):
     """Holds 3D position (X,Y,Z) and heading using PID control."""
@@ -49,7 +49,7 @@ class StabilizeTask(Task):
 
     def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, 
                 vision_data: Vision, 
-                config: SimulationConfig) -> Tuple[TaskStatus, ThrusterCommands]:
+                config: MissionConfig) -> Tuple[TaskStatus, ThrusterCommands]:
         
         # On first execution, lock 3D position/heading
         if not self.target_set:
