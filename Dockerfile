@@ -1,19 +1,20 @@
-# Use the official ARM64 compatible image
-FROM arm64v8/ros:humble-ros-base
+FROM ros:humble-ros-base
 
-# Install system dependencies for OpenCV and Pygame
+# Install Python ROS2 bindings, CV Bridge, and Cyclone DDS
 RUN apt-get update && apt-get install -y \
-    python3-pip \
+    ros-humble-rclpy \
     python3-opencv \
-    libsdl2-dev \
-    libsdl2-image-dev \
-    libsdl2-mixer-dev \
-    libsdl2-ttf-dev \
-    && rm -rf /var/lib/apt/lists/*
+    ros-humble-cv-bridge \
+    python3-pygame \
+    ros-humble-rmw-cyclonedds-cpp \
+    && rm -rf /var/lib/apt/lists/**
 
-# Install Python requirements
-RUN pip3 install pygame numpy opencv-python cv_bridge
-
-# Set working directory
+# Set the workspace
 WORKDIR /ros2_ws/src/sub_ai_sim
+COPY . .
+
+# Ensure the environment is sourced for all shells
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+# Set the default shell to bash
+SHELL ["/bin/bash", "-c"]

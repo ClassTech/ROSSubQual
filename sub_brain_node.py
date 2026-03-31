@@ -7,7 +7,7 @@ from cv_bridge import CvBridge
 # Import your existing simulation logic
 from ai.submarine import Submarine
 from ai.tasks import GateTask, StabilizeTask, OrbitTurnTask, ShutdownTask
-from data_structures import SensorSuite, MPU6050Readings
+from data_structures import Sensors, MPU6050Readings
 
 class SubmarineBrainNode(Node):
     def __init__(self):
@@ -25,7 +25,7 @@ class SubmarineBrainNode(Node):
         ]
         
         self.sub_ai = Submarine(mission_plan=mission)
-        self.latest_sensors = SensorSuite(camera_image=None, depth=0.0, heading=0.0, pitch=0.0, 
+        self.latest_sensors = Sensors(camera_image=None, depth=0.0, heading=0.0, pitch=0.0, 
                                           imu=MPU6050Readings())
 
         # 2. Subscriptions to Mock (or real) Sensor Nodes

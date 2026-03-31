@@ -15,7 +15,7 @@ from ai.tasks.common_subtasks import (WaitForTargetVisible, AlignToObjectX,
                                       ApproachAndCenterObject, TurnToHeading, 
                                       SwayStraight, Stabilize) 
 
-from data_structures import SensorSuite, Vision, ThrusterCommands 
+from data_structures import Sensors, Vision, ThrusterCommands 
 from config import MissionConfig 
 from utils import angle_diff
 
@@ -27,7 +27,7 @@ class SwayTurnTask(Task):
 
     # --- Simple subtask to store heading in context ---
     class _StoreHeadingSubtask(Subtask):
-        def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision: Vision, config: MissionConfig, context: dict) -> Tuple[SubtaskStatus, ThrusterCommands]:
+        def execute(self, sub: 'Submarine', dt: float, sensors: Sensors, vision: Vision, config: MissionConfig, context: dict) -> Tuple[SubtaskStatus, ThrusterCommands]:
             context['initial_heading'] = sensors.heading
             print(f"INFO: Stored initial heading: {sensors.heading:.1f}")
             return SubtaskStatus.COMPLETED, ThrusterCommands()

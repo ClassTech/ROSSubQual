@@ -15,7 +15,7 @@ from ai.tasks.common_subtasks import (WaitForTargetVisible, AlignToObjectX,
                                       ApproachAndCenterObject, Stabilize,
                                       DynamicOrbitPole, SwayUntilTargetLost)
 
-from data_structures import SensorSuite, Vision, ThrusterCommands
+from data_structures import Sensors, Vision, ThrusterCommands
 from config import MissionConfig
 from utils import angle_diff
 

@@ -6,7 +6,7 @@ from enum import Enum, auto
 from typing import Tuple, Dict, Any
 
 # --- Ensure this line correctly imports Vision ---
-from data_structures import SensorSuite, Vision, ThrusterCommands
+from data_structures import Sensors, Vision, ThrusterCommands
 # ---
 from config import MissionConfig
 # Forward declaration no longer needed
@@ -28,13 +28,13 @@ class Subtask:
 class Subtask:
     """Base class for a reusable action within a larger Task."""
     # --- Ensure type hints use Vision and 'Submarine' ---
-    def on_enter(self, sub: 'Submarine', sensors: SensorSuite, vision_data: Vision, context: Dict[str, Any]):
+    def on_enter(self, sub: 'Submarine', sensors: Sensors, vision_data: Vision, context: Dict[str, Any]):
         pass
 
-    def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, vision_data: Vision, config: MissionConfig, context: Dict[str, Any]) -> Tuple[SubtaskStatus, ThrusterCommands]:
+    def execute(self, sub: 'Submarine', dt: float, sensors: Sensors, vision_data: Vision, config: MissionConfig, context: Dict[str, Any]) -> Tuple[SubtaskStatus, ThrusterCommands]:
         raise NotImplementedError
 
-    def on_exit(self, sub: 'Submarine', sensors: SensorSuite, vision_data: Vision, context: Dict[str, Any]):
+    def on_exit(self, sub: 'Submarine', sensors: Sensors, vision_data: Vision, context: Dict[str, Any]):
         pass
     # ---
 

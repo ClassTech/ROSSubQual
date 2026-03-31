@@ -1,7 +1,45 @@
 services:
+  simulator:
+    build: .
+    container_name: robosubsim-simulator-1
+    networks:
+      ros_lan:
+        ipv4_address: 172.20.0.2
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="172.20.0.2"/><Peer address="172.20.0.3"/></Peers></Discovery></Domain></CycloneDDS>
+      - PYTHONPATH=/ros2_ws/src/sub_ai_sim:$PYTHONPATH
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - .:/ros2_ws/src/sub_ai_sim
+    command: bash -c "source /opt/ros/humble/setup.bash && python3 /ros2_ws/src/sub_ai_sim/simulator.py"
+
   sub_test:
     build: .
-    network_mode: host
+    container_name: robosubsim-sub_test-1
+    networks:
+      ros_lan:
+        ipv4_address: 172.20.0.3
+    privileged: true
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="172.20.0.2"/><Peer address="172.20.0.3"/></Peers></Discovery></Domain></CycloneDDS>
+      - PYTHONPATH=/ros2_ws/src/sub_ai_sim:$PYTHONPATH
     volumes:
       - .:/ros2_ws/src/sub_ai_sim
-    command: python3 /ros2_ws/src/sub_ai_sim/unified_test.py
+    command: bash -c "source /opt/ros/humble/setup.bash && python3 /ros2_ws/src/sub_ai_sim/unified_test.py"
+    depends_on:
+      - simulator
+
+networks:
+  ros_lan:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

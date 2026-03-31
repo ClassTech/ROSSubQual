@@ -8,7 +8,7 @@ from typing import Tuple
 
 from .task_base import Task, TaskStatus
 # --- CORRECT IMPORT ---
-from data_structures import SensorSuite, Vision, ThrusterCommands
+from data_structures import Sensors, Vision, ThrusterCommands
 # ---
 from config import MissionConfig
 
@@ -47,7 +47,7 @@ class StabilizeTask(Task):
 
     # process_vision is removed
 
-    def execute(self, sub: 'Submarine', dt: float, sensors: SensorSuite, 
+    def execute(self, sub: 'Submarine', dt: float, sensors: Sensors, 
                 vision_data: Vision, 
                 config: MissionConfig) -> Tuple[TaskStatus, ThrusterCommands]:
         
