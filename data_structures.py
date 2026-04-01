@@ -8,13 +8,15 @@ class Sensors:  # Renamed from Sensors
         self.pitch = 0.0
         self.roll = 0.0
         self.time = 0.0
+        self.camera_width = 0
+        self.camera_height = 0
 
 class ThrusterCommands:
-    def __init__(self):
-        self.forward = 0.0
-        self.lateral = 0.0
-        self.vertical = 0.0
-        self.yaw = 0.0
+    def __init__(self, forward=0.0, lateral=0.0, vertical=0.0, yaw=0.0):
+        self.forward = forward
+        self.lateral = lateral
+        self.vertical = vertical
+        self.yaw = yaw
 
 class Vision:
     def __init__(self):

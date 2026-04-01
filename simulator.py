@@ -7,9 +7,10 @@ import rclpy
 import cv2
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import Image, FluidPressure
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
+from sensor_msgs.msg import CompressedImage
+from std_msgs.msg import Float32
 
 # Explicitly sourced from your config
 from config import *
@@ -18,13 +19,13 @@ from data_structures import ThrusterCommands
 
 class SubmarineSimulator(Node):
     def __init__(self, width=1200, height=800):
-        super().__init__('thwaites_simulator')
+        super().__init__('simulator_node')
         self.bridge = CvBridge()
         
         # ROS2 Communication
-        self.image_pub = self.create_publisher(Image, '/thwaites/camera/image_raw', qos_profile_sensor_data)
-        self.depth_pub = self.create_publisher(FluidPressure, '/thwaites/pressure', qos_profile_sensor_data)
-        self.create_subscription(Twist, '/thwaites/cmd_vel', self.cmd_callback, 10)
+        self.image_pub = self.create_publisher(CompressedImage, '/camera/image_raw/compressed', qos_profile_sensor_data)
+        self.depth_pub = self.create_publisher(Float32, '/depth', 10)
+        self.create_subscription(Twist, '/cmd_vel', self.cmd_callback, 10)
         
         # Simulation Constants
         self.width, self.height = width, height
@@ -147,16 +148,31 @@ class SubmarineSimulator(Node):
     def publish_data(self):
         """Sends simulated sensor readings to the AI."""
         # Depth
-        depth_msg = FluidPressure()
-        depth_msg.fluid_pressure = float(self.subPhysics.z * 9806.65 + 101325.0)
+        depth_msg = Float32()
+        depth_msg.data = float(self.subPhysics.z)
         self.depth_pub.publish(depth_msg)
+        print(f"Published Depth {depth_msg}")
 
-        # Image Conversion (RGB -> BGR for ROS2/OpenCV)
+        # Image Conversion Pipeline
         img_data = pygame.surfarray.array3d(self.cameraSurface)
         img_data = img_data.swapaxes(0, 1)
-        img_bgr = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
-        img_msg = self.bridge.cv2_to_imgmsg(img_bgr, encoding="bgr8")
-        self.image_pub.publish(img_msg)
+        
+        # FIX: Force the array to 8-bit integers before handing it to OpenCV
+        import numpy as np # Make sure this is at the top of your file!
+        img_data = img_data.astype(np.uint8) 
+        
+        img_bgr = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)     
+        
+        # Build CompressedImage message manually
+        msg = CompressedImage()
+        msg.format = "jpeg"
+        success, encoded_img = cv2.imencode('.jpg', img_bgr)
+        
+        if success:
+            msg.data = encoded_img.tobytes()
+            self.image_pub.publish(msg)
+        else:
+            print("WARNING: JPEG Compression Failed!") # Added to catch future errors
 
     def run(self):
         pygame.init()
@@ -175,6 +191,7 @@ class SubmarineSimulator(Node):
             self.applyPhysics(dt, self.current_commands)
             self.render()
 
+
 def main(args=None):
     rclpy.init(args=args)
     sim = SubmarineSimulator()
@@ -184,7 +201,7 @@ def main(args=None):
         pass
     finally:
         pygame.quit()
-        rclpy.shutdown()
-
+        rclpy.shutdown
+        
 if __name__ == '__main__':
     main()

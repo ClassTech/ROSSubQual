@@ -3,12 +3,11 @@ from .common_subtasks import DiveToDepth, AlignToObjectX, DriveUntilTargetLostFo
 
 class GateTask:
     def __init__(self, target_depth=1.5):
-        self.target_depth = target_depth
         self.name = "GateTask"
         
         # Clean Callers: No more tolerance_px or legacy flags
         self.subtasks = [
-            DiveToDepth(target_depth=self.target_depth),
+            DiveToDepth(target_depth),
             AlignToObjectX(target_type='gate', target_x=0.5, threshold=0.05),
             DriveUntilTargetLostForward(target_type='gate', speed=0.4, timeout=8.0)
         ]

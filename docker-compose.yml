@@ -11,12 +11,12 @@ services:
       - ROS_DOMAIN_ID=0
       - ROS_LOCALHOST_ONLY=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="172.20.0.2"/><Peer address="172.20.0.3"/></Peers></Discovery></Domain></CycloneDDS>
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eth0"/></Interfaces></General></Domain></CycloneDDS>
       - PYTHONPATH=/ros2_ws/src/sub_ai_sim:$PYTHONPATH
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
       - .:/ros2_ws/src/sub_ai_sim
-    command: bash -c "source /opt/ros/humble/setup.bash && python3 /ros2_ws/src/sub_ai_sim/simulator.py"
+    command: bash -c "source /opt/ros/humble/setup.bash && python3 -u /ros2_ws/src/sub_ai_sim/simulator.py"
 
   sub_test:
     build: .
@@ -26,10 +26,11 @@ services:
         ipv4_address: 172.20.0.3
     privileged: true
     environment:
+      - DISPLAY=${DISPLAY}
       - ROS_DOMAIN_ID=0
       - ROS_LOCALHOST_ONLY=0
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="172.20.0.2"/><Peer address="172.20.0.3"/></Peers></Discovery></Domain></CycloneDDS>
+      - CYCLONEDDS_URI=<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eth0"/></Interfaces></General></Domain></CycloneDDS>
       - PYTHONPATH=/ros2_ws/src/sub_ai_sim:$PYTHONPATH
     volumes:
       - .:/ros2_ws/src/sub_ai_sim

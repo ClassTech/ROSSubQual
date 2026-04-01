@@ -6,7 +6,7 @@ class MissionControl:
     def __init__(self, config):
         self.config = config
         # Initial task for pre-qualification/mission
-        self.current_task = GateTask(config)
+        self.current_task = GateTask(target_depth=1.5)
         self.mission_name = "GateTask"
 
     def execute(self, sub, dt, sensors, vision_data, config):
